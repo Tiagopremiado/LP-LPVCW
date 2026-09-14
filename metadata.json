@@ -1,0 +1,6 @@
+{
+  "name": "LPVCW — Landing Page Vibe Creating WorkFlow",
+  "description": "Crie sites com design irresistível. O LPVCW separa direção visual, implementação e continuidade entre seções para você criar landing pages completas, coesas e de alto impacto.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

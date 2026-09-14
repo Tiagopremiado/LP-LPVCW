@@ -1,0 +1,114 @@
+import express from "express";
+import path from "path";
+import { createServer as createViteServer } from "vite";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const PORT = 3000;
+const PAGGPAY_API_URL = "https://api.paggpay.com/api/v1/pix";
+
+function getPaggPayApiKey(): string {
+  const key = process.env.PAGGPAY_API_KEY;
+  if (!key) {
+    throw new Error("PAGGPAY_API_KEY environment variable is required");
+  }
+  return key;
+}
+
+async function startServer() {
+  const app = express();
+
+  app.use(express.json());
+
+  // Health check endpoint
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  // Create Pix Charge via PaggPay API
+  app.post("/api/pix/create", async (req, res) => {
+    try {
+      const apiKey = getPaggPayApiKey();
+      const { value, customerName, customerEmail } = req.body;
+
+      const numValue = Number(value);
+      if (isNaN(numValue) || numValue < 192) {
+        return res.status(400).json({
+          error: "O valor mínimo para apoio via Pix é de R$ 1,92 (192 centavos).",
+          minimum_value_minor: 192,
+        });
+      }
+
+      const payload = {
+        value: Math.round(numValue),
+        customer: {
+          name: (customerName && String(customerName).trim()) || "Apoiador LPVCW",
+          email: (customerEmail && String(customerEmail).trim()) || "apoio@lpvcw.com",
+        },
+      };
+
+      const response = await fetch(PAGGPAY_API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return res.status(response.status).json({
+          error: data.message || "Erro ao gerar cobrança Pix na PaggPay",
+          details: data,
+        });
+      }
+
+      return res.json({
+        success: true,
+        pix: {
+          qrcode: data.pix?.qrcode || null,
+          base64_image: data.pix?.base64_image || null,
+          code: data.pix?.code || null,
+          expiration_date: data.pix?.expiration_date || null,
+        },
+        transaction: {
+          id: data.transaction?.id || data.pix?.id || null,
+          status: data.transaction?.status || data.pix?.status || "pending",
+          currency: data.transaction?.currency_code || "BRL",
+        },
+        amount_in_cents: Math.round(numValue),
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido ao processar pagamento";
+      console.error("[PaggPay API Error]:", message);
+      return res.status(500).json({
+        error: message,
+      });
+    }
+  });
+
+  // Vite middleware for development vs static build in production
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+}
+
+startServer();
