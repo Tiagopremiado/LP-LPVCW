@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { HeroSection } from './components/HeroSection';
+import { ProjectsShowcase } from './components/ProjectsShowcase';
 import { SupportSection } from './components/SupportSection';
 import { StepModal } from './components/StepModal';
 import { DownloadModal } from './components/DownloadModal';
@@ -27,7 +28,10 @@ export default function App() {
         onCtaClick={handleCtaClick}
       />
 
-      {/* 2nd Fold: Continuous Natural Black Cosmic Atmosphere (Fold Continuity) */}
+      {/* 2nd Fold: Projetos criados com LPVCW Showcase */}
+      <ProjectsShowcase />
+
+      {/* 3rd Fold: Continuous Natural Black Cosmic Atmosphere & Apoio Pix */}
       <SupportSection customBg={null} />
 
       {/* Interactive Step Details Modal */}
@@ -48,3 +52,4 @@ export default function App() {
     </main>
   );
 }
+

@@ -36,8 +36,15 @@ export const Header: React.FC<HeaderProps> = ({
         </span>
       </div>
 
-      {/* Right: Download CTA button */}
-      <div>
+      {/* Right: Actions & Links */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        <a
+          href="#projetos-lpvcw"
+          className="text-xs font-medium text-neutral-400 hover:text-white transition-colors px-2.5 py-1 select-none"
+        >
+          Projetos
+        </a>
+
         {isExternalLink ? (
           <a
             id="header-download-btn"
