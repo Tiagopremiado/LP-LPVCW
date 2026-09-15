@@ -9,9 +9,12 @@ const PORT = 3000;
 const PAGGPAY_API_URL = "https://api.paggpay.com/api/v1/pix";
 
 function getPaggPayApiKey(): string {
-  const key = process.env.PAGGPAY_API_KEY;
+  let key = process.env.PAGGPAY_API_KEY || "";
+  key = key.trim().replace(/^["']|["']$/g, "");
   if (!key) {
-    throw new Error("PAGGPAY_API_KEY environment variable is required");
+    throw new Error(
+      "A variável de ambiente PAGGPAY_API_KEY não foi configurada no servidor."
+    );
   }
   return key;
 }
@@ -58,12 +61,29 @@ async function startServer() {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const data: any = await response.json().catch(() => null);
 
       if (!response.ok) {
+        let errorMsg = "Erro ao gerar cobrança Pix na PaggPay";
+        if (typeof data?.message === "string") {
+          errorMsg = data.message;
+        } else if (typeof data?.error === "string") {
+          errorMsg = data.error;
+        } else if (data?.error && typeof data.error === "object") {
+          errorMsg = data.error.message || JSON.stringify(data.error);
+        } else if (data?.message && typeof data.message === "object") {
+          errorMsg = data.message.message || JSON.stringify(data.message);
+        }
+
         return res.status(response.status).json({
-          error: data.message || "Erro ao gerar cobrança Pix na PaggPay",
+          error: errorMsg,
           details: data,
+        });
+      }
+
+      if (!data) {
+        return res.status(502).json({
+          error: "Resposta vazia da API PaggPay.",
         });
       }
 

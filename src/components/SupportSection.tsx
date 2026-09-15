@@ -63,10 +63,35 @@ export const SupportSection: React.FC<SupportSectionProps> = ({ customBg }) => {
         }),
       });
 
-      const data = await res.json();
+      const responseText = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(
+          `Resposta inválida do servidor (${res.status}). Verifique a chave PAGGPAY_API_KEY na Vercel e faça um novo Redeploy.`
+        );
+      }
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Não foi possível gerar a cobrança Pix.');
+      if (!res.ok || !data?.success) {
+        let extractedMsg = '';
+        if (typeof data?.error === 'string') {
+          extractedMsg = data.error;
+        } else if (data?.error && typeof data.error === 'object') {
+          extractedMsg = data.error.message || data.error.code || JSON.stringify(data.error);
+        } else if (typeof data?.message === 'string') {
+          extractedMsg = data.message;
+        } else if (data?.message && typeof data.message === 'object') {
+          extractedMsg = data.message.message || JSON.stringify(data.message);
+        } else if (data?.details && typeof data.details === 'object') {
+          extractedMsg = data.details.message || JSON.stringify(data.details);
+        }
+
+        if (!extractedMsg || extractedMsg === '[object Object]') {
+          extractedMsg = `Erro ${res.status}: Não foi possível gerar a cobrança Pix. Verifique a variável PAGGPAY_API_KEY na Vercel.`;
+        }
+
+        throw new Error(extractedMsg);
       }
 
       setPixData({
@@ -78,7 +103,19 @@ export const SupportSection: React.FC<SupportSectionProps> = ({ customBg }) => {
         amount_formatted: `R$ ${amount}`,
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha na comunicação com a PaggPay.';
+      let msg = 'Falha na comunicação com a PaggPay.';
+      if (err instanceof Error) {
+        msg = err.message;
+      } else if (typeof err === 'string') {
+        msg = err;
+      } else if (err && typeof err === 'object') {
+        msg = (err as any).message || (err as any).error || JSON.stringify(err);
+      }
+
+      if (!msg || msg === '[object Object]') {
+        msg = 'Erro ao processar cobrança. Verifique a chave PAGGPAY_API_KEY na Vercel e faça um novo Redeploy.';
+      }
+
       setError(msg);
     } finally {
       setLoading(false);
